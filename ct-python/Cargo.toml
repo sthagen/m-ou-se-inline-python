@@ -1,7 +1,6 @@
 [package]
 name = "ct-python"
 version = "0.5.7"
-authors = ["Mara Bos <m-ou.se@m-ou.se>"]
 description = "Execute Python code at compile time to generate Rust code"
 license = "BSD-2-Clause"
 edition = "2018"
