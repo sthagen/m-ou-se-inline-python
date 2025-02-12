@@ -18,13 +18,13 @@
 //!
 //! Use the `python!{..}` macro to write Python code directly in your Rust code.
 //!
-//! _NOTE:_ Rust **nightly** toolchain is required. Feature `proc_macro_span` is still unstable,
-//! for more details check out [issue #54725](https://github.com/rust-lang/rust/issues/54725) - Tracking issue for `proc_macro::Span` inspection APIs
+//! _NOTE:_ This crate uses the **unstable** [`proc_macro_span` feature](https://github.com/rust-lang/rust/issues/54725),
+//! so it will only compile on Rust **nightly**.
 //!
 //! ## Using Rust variables
 //!
 //! To reference Rust variables, use `'var`, as shown in the example above.
-//! `var` needs to implement [`pyo3::ToPyObject`].
+//! `var` needs to implement [`pyo3::IntoPyObject`].
 //!
 //! ## Re-using a Python context
 //!
