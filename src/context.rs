@@ -94,8 +94,8 @@ impl Context {
 	/// This function panics if the variable doesn't exist, or the conversion fails.
 	pub fn get_with_gil<'p, T: FromPyObject<'p>>(&'p self, py: Python<'p>, name: &str) -> T {
 		match self.globals(py).get_item(name) {
-			None => panic!("Python context does not contain a variable named `{}`", name),
-			Some(value) => match FromPyObject::extract(value) {
+			Err(_) | Ok(None) => panic!("Python context does not contain a variable named `{}`", name),
+			Ok(Some(value)) => match FromPyObject::extract(value) {
 				Ok(value) => value,
 				Err(e) => {
 					e.print(py);

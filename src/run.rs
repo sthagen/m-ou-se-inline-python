@@ -1,5 +1,5 @@
 use crate::Context;
-use pyo3::{ffi, types::PyAny, AsPyPointer, PyObject, PyResult, Python};
+use pyo3::{ffi, types::PyAny, PyObject, PyResult, Python};
 
 pub fn run_python_code<'p>(py: Python<'p>, context: &Context, bytecode: &[u8]) -> PyResult<&'p PyAny> {
 	unsafe {
