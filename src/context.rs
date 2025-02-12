@@ -3,7 +3,7 @@ use crate::PythonBlock;
 use pyo3::{
 	prelude::*,
 	types::{PyCFunction, PyDict},
-	FromPyObject, Py, PyResult, Python, ToPyObject,
+	FromPyObject, Py, PyResult, Python, IntoPyObject,
 };
 
 /// An execution context for Python code.
@@ -71,12 +71,12 @@ impl Context {
 
 	fn try_new(py: Python) -> PyResult<Self> {
 		Ok(Self {
-			globals: py.import_bound("__main__")?.dict().copy()?.into(),
+			globals: py.import("__main__")?.dict().copy()?.into(),
 		})
 	}
 
 	/// Get the globals as dictionary.
-	pub fn globals<'p>(&'p self, py: Python<'p>) -> &'p Bound<'p, PyDict> {
+	pub fn globals<'p>(&self, py: Python<'p>) -> &Bound<'p, PyDict> {
 		self.globals.bind(py)
 	}
 
@@ -112,14 +112,14 @@ impl Context {
 	/// If you already have the GIL, you can use [`Context::set_with_gil`] instead.
 	///
 	/// This function panics if the conversion fails.
-	pub fn set<T: ToPyObject>(&self, name: &str, value: T) {
+	pub fn set<T: for<'p> IntoPyObject<'p>>(&self, name: &str, value: T) {
 		Python::with_gil(|py| self.set_with_gil(py, name, value));
 	}
 
 	/// Set a global variable in the context.
 	///
 	/// This function panics if the conversion fails.
-	pub fn set_with_gil<'p, T: ToPyObject>(&self, py: Python<'p>, name: &str, value: T) {
+	pub fn set_with_gil<'p, T: IntoPyObject<'p>>(&self, py: Python<'p>, name: &str, value: T) {
 		match self.globals(py).set_item(name, value) {
 			Ok(()) => (),
 			Err(e) => {
@@ -165,7 +165,7 @@ impl Context {
 	pub fn add_wrapped_with_gil<'p>(&self, py: Python<'p>, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
 		let obj = wrapper(py).unwrap();
 		let name = obj.getattr("__name__").expect("Missing __name__");
-		self.set_with_gil(py, name.extract().unwrap(), obj)
+		self.set_with_gil(py, name.extract().unwrap(), obj);
 	}
 
 	/// Run Python code using this context.

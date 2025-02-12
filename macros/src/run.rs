@@ -14,7 +14,7 @@ fn ensure_libpython_symbols_loaded(py: Python) -> PyResult<()> {
 	// This function tries to (re)load the right version of libpython, but this
 	// time with RTLD_GLOBAL enabled.
 
-	let sysconfig = py.import_bound("sysconfig")?;
+	let sysconfig = py.import("sysconfig")?;
 	let libdir: String = sysconfig.getattr("get_config_var")?.call1(("LIBDIR",))?.extract()?;
 	let so_name: String = sysconfig.getattr("get_config_var")?.call1(("INSTSONAME",))?.extract()?;
 	let path = std::ffi::CString::new(format!("{}/{}", libdir, so_name)).unwrap();
@@ -28,10 +28,10 @@ fn run_and_capture(py: Python, code: PyObject) -> PyResult<String> {
 	#[cfg(unix)]
 	let _ = ensure_libpython_symbols_loaded(py);
 
-	let globals = py.import_bound("__main__")?.dict().copy()?;
+	let globals = py.import("__main__")?.dict().copy()?;
 
-	let sys = py.import_bound("sys")?;
-	let io = py.import_bound("io")?;
+	let sys = py.import("sys")?;
+	let io = py.import("io")?;
 
 	let stdout = io.getattr("StringIO")?.call0()?;
 	let original_stdout = sys.dict().get_item("stdout")?;
