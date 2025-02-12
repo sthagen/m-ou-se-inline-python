@@ -3,7 +3,7 @@ use crate::PythonBlock;
 use pyo3::{
 	prelude::*,
 	types::{PyCFunction, PyDict},
-	FromPyObject, Py, PyResult, Python, IntoPyObject,
+	FromPyObject, IntoPyObject, Py, PyResult, Python,
 };
 
 /// An execution context for Python code.
@@ -45,21 +45,13 @@ pub struct Context {
 impl Context {
 	/// Create a new context for running Python code.
 	///
-	/// This function temporarily acquires the GIL.
-	/// If you already have the GIL, you can use [`Context::new_with_gil`] instead.
-	///
 	/// This function panics if it fails to create the context.
 	#[allow(clippy::new_without_default)]
 	pub fn new() -> Self {
 		Python::with_gil(Self::new_with_gil)
 	}
 
-	/// Create a new context for running Python code.
-	///
-	/// You must acquire the GIL to call this function.
-	///
-	/// This function panics if it fails to create the context.
-	pub fn new_with_gil(py: Python) -> Self {
+	pub(crate) fn new_with_gil(py: Python) -> Self {
 		match Self::try_new(py) {
 			Ok(x) => x,
 			Err(error) => {
@@ -76,25 +68,15 @@ impl Context {
 	}
 
 	/// Get the globals as dictionary.
-	pub fn globals<'p>(&self, py: Python<'p>) -> &Bound<'p, PyDict> {
-		self.globals.bind(py)
+	pub fn globals<'p>(&self) -> &Py<PyDict> {
+		&self.globals
 	}
 
 	/// Retrieve a global variable from the context.
-	///
-	/// This function temporarily acquires the GIL.
-	/// If you already have the GIL, you can use [`Context::get_with_gil`] instead.
 	///
 	/// This function panics if the variable doesn't exist, or the conversion fails.
 	pub fn get<T: for<'p> FromPyObject<'p>>(&self, name: &str) -> T {
-		Python::with_gil(|py| self.get_with_gil(py, name))
-	}
-
-	/// Retrieve a global variable from the context.
-	///
-	/// This function panics if the variable doesn't exist, or the conversion fails.
-	pub fn get_with_gil<'p, T: FromPyObject<'p>>(&'p self, py: Python<'p>, name: &str) -> T {
-		match self.globals(py).get_item(name) {
+		Python::with_gil(|py| match self.globals.bind(py).get_item(name) {
 			Err(_) | Ok(None) => panic!("Python context does not contain a variable named `{}`", name),
 			Ok(Some(value)) => match FromPyObject::extract_bound(&value) {
 				Ok(value) => value,
@@ -103,30 +85,20 @@ impl Context {
 					panic!("Unable to convert `{}` to `{}`", name, std::any::type_name::<T>());
 				}
 			},
-		}
+		})
 	}
 
 	/// Set a global variable in the context.
-	///
-	/// This function temporarily acquires the GIL.
-	/// If you already have the GIL, you can use [`Context::set_with_gil`] instead.
 	///
 	/// This function panics if the conversion fails.
 	pub fn set<T: for<'p> IntoPyObject<'p>>(&self, name: &str, value: T) {
-		Python::with_gil(|py| self.set_with_gil(py, name, value));
-	}
-
-	/// Set a global variable in the context.
-	///
-	/// This function panics if the conversion fails.
-	pub fn set_with_gil<'p, T: IntoPyObject<'p>>(&self, py: Python<'p>, name: &str, value: T) {
-		match self.globals(py).set_item(name, value) {
+		Python::with_gil(|py| match self.globals().bind(py).set_item(name, value) {
 			Ok(()) => (),
 			Err(e) => {
 				e.print(py);
 				panic!("Unable to set `{}` from a `{}`", name, std::any::type_name::<T>());
 			}
-		}
+		})
 	}
 
 	/// Add a wrapped `#[pyfunction]` or `#[pymodule]` using its own `__name__`.
@@ -152,20 +124,15 @@ impl Context {
 	///     });
 	/// }
 	/// ```
-	///
-	/// This function temporarily acquires the GIL.
-	/// If you already have the GIL, you can use [`Context::add_wrapped_with_gil`] instead.
 	pub fn add_wrapped(&self, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
-		Python::with_gil(|py| self.add_wrapped_with_gil(py, wrapper));
-	}
-
-	/// Add a wrapped `#[pyfunction]` or `#[pymodule]` using its own `__name__`.
-	///
-	/// See [Context::add_wrapped].
-	pub fn add_wrapped_with_gil<'p>(&self, py: Python<'p>, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
-		let obj = wrapper(py).unwrap();
-		let name = obj.getattr("__name__").expect("Missing __name__");
-		self.set_with_gil(py, name.extract().unwrap(), obj);
+		Python::with_gil(|py| {
+			let obj = wrapper(py).unwrap();
+			let name = obj.getattr("__name__").expect("Missing __name__");
+			if let Err(e) = self.globals().bind(py).set_item(name, obj) {
+				e.print(py);
+				panic!("Unable to add wrapped function");
+			}
+		})
 	}
 
 	/// Run Python code using this context.
@@ -181,22 +148,13 @@ impl Context {
 	/// });
 	/// ```
 	///
-	/// This function temporarily acquires the GIL.
-	/// If you already have the GIL, you can use [`Context::run_with_gil`] instead.
-	///
 	/// This function panics if the Python code fails.
 	pub fn run<F: FnOnce(&Bound<PyDict>)>(&self, code: PythonBlock<F>) {
 		Python::with_gil(|py| self.run_with_gil(py, code));
 	}
 
-	/// Run Python code using this context.
-	///
-	/// This function should be called using the `python!{}` macro, just like
-	/// [`Context::run`].
-	///
-	/// This function panics if the Python code fails.
-	pub fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, code: PythonBlock<F>) {
-		(code.set_variables)(self.globals(py));
+	pub(crate) fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, code: PythonBlock<F>) {
+		(code.set_variables)(self.globals().bind(py));
 		match run_python_code(py, self, code.bytecode) {
 			Ok(_) => (),
 			Err(e) => {
