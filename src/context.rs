@@ -155,14 +155,14 @@ impl Context {
 	///
 	/// This function temporarily acquires the GIL.
 	/// If you already have the GIL, you can use [`Context::add_wrapped_with_gil`] instead.
-	pub fn add_wrapped(&self, wrapper: &impl Fn(Python) -> PyResult<&PyCFunction>) {
+	pub fn add_wrapped(&self, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
 		Python::with_gil(|py| self.add_wrapped_with_gil(py, wrapper));
 	}
 
 	/// Add a wrapped `#[pyfunction]` or `#[pymodule]` using its own `__name__`.
 	///
 	/// See [Context::add_wrapped].
-	pub fn add_wrapped_with_gil<'p>(&self, py: Python<'p>, wrapper: &impl Fn(Python) -> PyResult<&PyCFunction>) {
+	pub fn add_wrapped_with_gil<'p>(&self, py: Python<'p>, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
 		let obj = wrapper(py).unwrap();
 		let name = obj.getattr("__name__").expect("Missing __name__");
 		self.set_with_gil(py, name.extract().unwrap(), obj)
