@@ -1,6 +1,7 @@
 use crate::run::run_python_code;
 use crate::PythonBlock;
 use pyo3::{
+	prelude::*,
 	types::{PyCFunction, PyDict},
 	FromPyObject, Py, PyResult, Python, ToPyObject,
 };
@@ -70,13 +71,13 @@ impl Context {
 
 	fn try_new(py: Python) -> PyResult<Self> {
 		Ok(Self {
-			globals: py.import("__main__")?.dict().copy()?.into(),
+			globals: py.import_bound("__main__")?.dict().copy()?.into(),
 		})
 	}
 
 	/// Get the globals as dictionary.
-	pub fn globals<'p>(&'p self, py: Python<'p>) -> &'p PyDict {
-		self.globals.as_ref(py)
+	pub fn globals<'p>(&'p self, py: Python<'p>) -> &'p Bound<'p, PyDict> {
+		self.globals.bind(py)
 	}
 
 	/// Retrieve a global variable from the context.
@@ -95,7 +96,7 @@ impl Context {
 	pub fn get_with_gil<'p, T: FromPyObject<'p>>(&'p self, py: Python<'p>, name: &str) -> T {
 		match self.globals(py).get_item(name) {
 			Err(_) | Ok(None) => panic!("Python context does not contain a variable named `{}`", name),
-			Ok(Some(value)) => match FromPyObject::extract(value) {
+			Ok(Some(value)) => match FromPyObject::extract_bound(&value) {
 				Ok(value) => value,
 				Err(e) => {
 					e.print(py);
@@ -184,7 +185,7 @@ impl Context {
 	/// If you already have the GIL, you can use [`Context::run_with_gil`] instead.
 	///
 	/// This function panics if the Python code fails.
-	pub fn run<F: FnOnce(&PyDict)>(&self, code: PythonBlock<F>) {
+	pub fn run<F: FnOnce(&Bound<PyDict>)>(&self, code: PythonBlock<F>) {
 		Python::with_gil(|py| self.run_with_gil(py, code));
 	}
 
@@ -194,7 +195,7 @@ impl Context {
 	/// [`Context::run`].
 	///
 	/// This function panics if the Python code fails.
-	pub fn run_with_gil<F: FnOnce(&PyDict)>(&self, py: Python<'_>, code: PythonBlock<F>) {
+	pub fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, code: PythonBlock<F>) {
 		(code.set_variables)(self.globals(py));
 		match run_python_code(py, self, code.bytecode) {
 			Ok(_) => (),

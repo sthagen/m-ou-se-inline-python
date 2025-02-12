@@ -7,7 +7,7 @@ extern crate proc_macro;
 use self::embed_python::EmbedPython;
 use proc_macro::{Span, TokenStream as TokenStream1};
 use proc_macro2::{Literal, TokenStream};
-use pyo3::{ffi, types::PyBytes, FromPyPointer, PyObject, Python};
+use pyo3::{ffi, Py, PyObject, Python};
 use quote::quote;
 use std::ffi::CString;
 
@@ -37,9 +37,9 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 				.map_err(|err| error::compile_error_msg(py, err, tokens))?;
 
 			Ok(Literal::byte_string(
-				PyBytes::from_owned_ptr_or_err(py, ffi::PyMarshal_WriteObjectToString(code.as_ptr(), pyo3::marshal::VERSION))
+				Py::from_owned_ptr_or_err(py, ffi::PyMarshal_WriteObjectToString(code.as_ptr(), pyo3::marshal::VERSION))
 					.map_err(|_e| quote!(compile_error! {"failed to generate python bytecode"}))?
-					.as_bytes(),
+					.as_bytes(py),
 			))
 		});
 		result?
@@ -53,9 +53,11 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 			#bytecode,
 			|globals| {
 				#(
-					globals
-						.set_item(#varname, #var)
-						.expect("Unable to convert variable to Python");
+					::inline_python::pyo3::prelude::PyDictMethods::set_item(
+						globals,
+						#varname,
+						#var
+					).expect("Unable to convert variable to Python");
 				)*
 			},
 		)

@@ -1,6 +1,6 @@
 use crate::error::compile_error_msg;
 use proc_macro2::TokenStream;
-use pyo3::{ffi, PyObject, PyResult, Python};
+use pyo3::{ffi, prelude::*, PyObject, PyResult, Python};
 use std::str::FromStr;
 
 #[cfg(unix)]
@@ -14,7 +14,7 @@ fn ensure_libpython_symbols_loaded(py: Python) -> PyResult<()> {
 	// This function tries to (re)load the right version of libpython, but this
 	// time with RTLD_GLOBAL enabled.
 
-	let sysconfig = py.import("sysconfig")?;
+	let sysconfig = py.import_bound("sysconfig")?;
 	let libdir: String = sysconfig.getattr("get_config_var")?.call1(("LIBDIR",))?.extract()?;
 	let so_name: String = sysconfig.getattr("get_config_var")?.call1(("INSTSONAME",))?.extract()?;
 	let path = std::ffi::CString::new(format!("{}/{}", libdir, so_name)).unwrap();
@@ -28,14 +28,14 @@ fn run_and_capture(py: Python, code: PyObject) -> PyResult<String> {
 	#[cfg(unix)]
 	let _ = ensure_libpython_symbols_loaded(py);
 
-	let globals = py.import("__main__")?.dict().copy()?;
+	let globals = py.import_bound("__main__")?.dict().copy()?;
 
-	let sys = py.import("sys")?;
-	let io = py.import("io")?;
+	let sys = py.import_bound("sys")?;
+	let io = py.import_bound("io")?;
 
 	let stdout = io.getattr("StringIO")?.call0()?;
 	let original_stdout = sys.dict().get_item("stdout")?;
-	sys.dict().set_item("stdout", stdout)?;
+	sys.dict().set_item("stdout", &stdout)?;
 
 	let result =
 		unsafe { PyObject::from_owned_ptr_or_err(py, ffi::PyEval_EvalCode(code.as_ptr(), globals.as_ptr(), std::ptr::null_mut())) };

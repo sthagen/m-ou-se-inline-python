@@ -111,7 +111,7 @@
 //!
 //! Everything else should work fine.
 
-use pyo3::{types::PyDict, Python};
+use pyo3::{types::PyDict, Bound, Python};
 
 mod context;
 mod run;
@@ -138,21 +138,21 @@ pub use pyo3;
 pub use inline_python_macros::python;
 
 #[doc(hidden)]
-pub trait FromInlinePython<F: FnOnce(&PyDict)> {
+pub trait FromInlinePython<F: FnOnce(&Bound<PyDict>)> {
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self;
 }
 
 /// Converting a `python!{}` block to `()` will run the Python code.
 ///
 /// This happens when `python!{}` is used as a statement by itself.
-impl<F: FnOnce(&PyDict)> FromInlinePython<F> for () {
+impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for () {
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F) {
 		let _: Context = FromInlinePython::from_python_macro(bytecode, set_variables);
 	}
 }
 
 /// Assigning a `python!{}` block to a `Context` will run the Python code and capture the resulting context.
-impl<F: FnOnce(&PyDict)> FromInlinePython<F> for Context {
+impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for Context {
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self {
 		Python::with_gil(|py| {
 			let context = Context::new_with_gil(py);
@@ -163,7 +163,7 @@ impl<F: FnOnce(&PyDict)> FromInlinePython<F> for Context {
 }
 
 /// Using a `python!{}` block as a `PythonBlock` object will not do anything yet.
-impl<F: FnOnce(&PyDict)> FromInlinePython<F> for PythonBlock<F> {
+impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self {
 		Self { bytecode, set_variables }
 	}
