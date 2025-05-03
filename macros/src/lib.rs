@@ -18,8 +18,6 @@ mod run;
 fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 	let tokens = input.clone();
 
-	check_no_attribute(input.clone())?;
-
 	let filename = Span::call_site().file();
 
 	let mut x = EmbedPython::new();
@@ -88,22 +86,6 @@ fn ct_python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 
 		run::run_ct_python(py, code, tokens)
 	})
-}
-
-fn check_no_attribute(input: TokenStream) -> Result<(), TokenStream> {
-	let mut input = input.into_iter();
-	if let Some(token) = input.next() {
-		if token.to_string() == "#"
-			&& input.next().map_or(false, |t| t.to_string() == "!")
-			&& input.next().map_or(false, |t| t.to_string().starts_with('['))
-		{
-			return Err(quote!(compile_error! {
-				"Attributes in python!{} are no longer supported. \
-				Use context.run(python!{..}) to use a context.",
-			}));
-		}
-	}
-	Ok(())
 }
 
 #[doc(hidden)]
