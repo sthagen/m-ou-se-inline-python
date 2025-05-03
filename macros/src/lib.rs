@@ -20,7 +20,7 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 
 	check_no_attribute(input.clone())?;
 
-	let filename = Span::call_site().source_file().path().to_string_lossy().into_owned();
+	let filename = Span::call_site().file();
 
 	let mut x = EmbedPython::new();
 
@@ -67,7 +67,7 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 fn ct_python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 	let tokens = input.clone();
 
-	let filename = Span::call_site().source_file().path().to_string_lossy().into_owned();
+	let filename = Span::call_site().file();
 
 	let mut x = EmbedPython::new();
 
