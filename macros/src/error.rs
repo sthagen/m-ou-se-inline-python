@@ -1,4 +1,4 @@
-use proc_macro::Span;
+use proc_macro::{TokenTree, Span, TokenStream as TokenStream1};
 use proc_macro2::TokenStream;
 use pyo3::{prelude::*, types::PyTraceback, Bound, IntoPyObject, PyErr, PyResult, PyTypeInfo, Python};
 use quote::{quote, quote_spanned};
@@ -16,7 +16,7 @@ pub fn compile_error_msg(py: Python, error: PyErr, tokens: TokenStream) -> Token
 		let line: Option<usize> = value.getattr("lineno").ok().and_then(|x| x.extract().ok());
 		let msg: Option<String> = value.getattr("msg").ok().and_then(|x| x.extract().ok());
 		if let (Some(line), Some(msg)) = (line, msg) {
-			if let Some(spans) = spans_for_line(tokens.clone(), line) {
+			if let Some(spans) = spans_for_line(tokens.clone().into(), line) {
 				return compile_error(spans, format!("python: {msg}"));
 			}
 		}
@@ -26,7 +26,7 @@ pub fn compile_error_msg(py: Python, error: PyErr, tokens: TokenStream) -> Token
 		if let Ok((file, line)) = get_traceback_info(tb) {
 			if file == Span::call_site().file() {
 				if let Ok(msg) = value.str() {
-					if let Some(spans) = spans_for_line(tokens, line) {
+					if let Some(spans) = spans_for_line(tokens.into(), line) {
 						return compile_error(spans, format!("python: {msg}"));
 					}
 				}
@@ -46,18 +46,28 @@ fn get_traceback_info(tb: &Bound<'_, PyTraceback>) -> PyResult<(String, usize)> 
 	Ok((file, line))
 }
 
+fn for_all_spans(input: TokenStream1, f: &mut impl FnMut(Span)) {
+	for token in input {
+		match token {
+			TokenTree::Group(group) => {
+				f(group.span_open());
+				for_all_spans(group.stream(), f);
+				f(group.span_close());
+			}
+			_ => f(token.span()),
+		}
+	}
+}
+
 /// Get the first and last span for a specific line of input from a TokenStream.
-fn spans_for_line(input: TokenStream, line: usize) -> Option<(Span, Span)> {
-	let mut spans = input
-		.into_iter()
-		.map(|x| x.span().unwrap())
-		.skip_while(|span| span.start().line() < line)
-		.take_while(|span| span.start().line() == line);
-
-	let first = spans.next()?;
-	let last = spans.last().unwrap_or(first);
-
-	Some((first, last))
+fn spans_for_line(input: TokenStream1, line: usize) -> Option<(Span, Span)> {
+	let mut spans = None;
+	for_all_spans(input, &mut |span| {
+		if span.start().line() == line {
+			spans.get_or_insert((span, span)).1 = span;
+		}
+	});
+	spans
 }
 
 /// Create a compile_error!{} using two spans that mark the start and end of the error.
