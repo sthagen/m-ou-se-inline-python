@@ -8,4 +8,4 @@ repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "macro", "generate", "compile-time"]
 
 [dependencies]
-inline-python-macros = { version = "=0.14.0", path = "../macros" }
+inline-python-macros = { version = "0.14.0", path = "../macros" }
