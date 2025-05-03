@@ -4,7 +4,7 @@ version = "0.5.9"
 description = "Execute Python code at compile time to generate Rust code"
 license = "BSD-2-Clause"
 edition = "2018"
-repository = "https://github.com/fusion-engineering/inline-python/tree/master/ct-python"
+repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "macro", "generate", "compile-time"]
 
 [dependencies]

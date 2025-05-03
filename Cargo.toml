@@ -4,7 +4,7 @@ version = "0.14.0"
 description = "Inline Python code directly in your Rust code"
 license = "BSD-2-Clause"
 edition = "2018"
-repository = "https://github.com/fusion-engineering/inline-python"
+repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "inline", "embed", "macro"]
 autoexamples = false
 
