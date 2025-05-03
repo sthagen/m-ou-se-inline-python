@@ -16,9 +16,8 @@ pub fn compile_error_msg(py: Python, error: PyErr, tokens: TokenStream) -> Token
 		let line: Option<usize> = value.getattr("lineno").ok().and_then(|x| x.extract().ok());
 		let msg: Option<String> = value.getattr("msg").ok().and_then(|x| x.extract().ok());
 		if let (Some(line), Some(msg)) = (line, msg) {
-			if let Some(span) = span_for_line(tokens.clone(), line) {
-				let error = format!("python: {}", msg);
-				return quote_spanned!(span.into() => compile_error!{#error});
+			if let Some(spans) = spans_for_line(tokens.clone(), line) {
+				return compile_error(spans, format!("python: {msg}"));
 			}
 		}
 	}
@@ -27,9 +26,8 @@ pub fn compile_error_msg(py: Python, error: PyErr, tokens: TokenStream) -> Token
 		if let Ok((file, line)) = get_traceback_info(tb) {
 			if file == Span::call_site().file() {
 				if let Ok(msg) = value.str() {
-					if let Some(span) = span_for_line(tokens, line) {
-						let error = format!("python: {}", msg);
-						return quote_spanned!(span.into() => compile_error!{#error});
+					if let Some(spans) = spans_for_line(tokens, line) {
+						return compile_error(spans, format!("python: {msg}"));
 					}
 				}
 			}
@@ -48,21 +46,22 @@ fn get_traceback_info(tb: &Bound<'_, PyTraceback>) -> PyResult<(String, usize)> 
 	Ok((file, line))
 }
 
-/// Get a span for a specific line of input from a TokenStream.
-fn span_for_line(input: TokenStream, line: usize) -> Option<Span> {
+/// Get the first and last span for a specific line of input from a TokenStream.
+fn spans_for_line(input: TokenStream, line: usize) -> Option<(Span, Span)> {
 	let mut spans = input
 		.into_iter()
 		.map(|x| x.span().unwrap())
 		.skip_while(|span| span.start().line() < line)
 		.take_while(|span| span.start().line() == line);
 
-	let mut result = spans.next()?;
-	for span in spans {
-		result = match result.join(span) {
-			None => return Some(result),
-			Some(span) => span,
-		}
-	}
+	let first = spans.next()?;
+	let last = spans.last().unwrap_or(first);
 
-	Some(result)
+	Some((first, last))
+}
+
+/// Create a compile_error!{} using two spans that mark the start and end of the error.
+fn compile_error(spans: (Span, Span), error: String) -> TokenStream {
+	let path = quote_spanned!(spans.0.into() => ::core::compile_error);
+	quote_spanned!(spans.1.into() => #path!{#error})
 }
