@@ -74,9 +74,7 @@ impl EmbedPython {
 				}
 				TokenTree::Punct(x) => {
 					if !self.compile_time && x.as_char() == '\'' && x.spacing() == Spacing::Joint {
-						let name = if let Some(TokenTree::Ident(name)) = tokens.next() {
-							name
-						} else {
+						let Some(TokenTree::Ident(name)) = tokens.next() else {
 							unreachable!()
 						};
 						let name_str = format!("_RUST_{name}");
