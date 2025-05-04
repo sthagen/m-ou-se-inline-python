@@ -172,6 +172,7 @@ impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for Context {
 }
 
 /// Using a `python!{}` block as a `PythonBlock` object will not do anything yet.
+#[cfg(not(doc))]
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self {
 		Self {
@@ -183,9 +184,15 @@ impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
 }
 
 /// Represents a `python!{}` block.
-#[doc(hidden)]
+#[cfg(not(doc))]
 pub struct PythonBlock<F> {
 	bytecode: &'static [u8],
 	set_variables: F,
 	panic: fn(String) -> !,
 }
+
+/// In the documentation, we just show `PythonBlock` in
+/// `Context::run`'s signature, without any generic arguments.
+#[cfg(doc)]
+#[doc(hidden)]
+pub struct PythonBlock;

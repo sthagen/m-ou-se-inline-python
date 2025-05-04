@@ -142,10 +142,15 @@ impl Context {
 	/// ```
 	///
 	/// This function panics if the Python code fails.
-	pub fn run<F: FnOnce(&Bound<PyDict>)>(&self, code: PythonBlock<F>) {
+	pub fn run(
+		&self,
+		#[cfg(not(doc))] code: PythonBlock<impl FnOnce(&Bound<PyDict>)>,
+		#[cfg(doc)] code: PythonBlock, // Just show 'PythonBlock' in the docs.
+	) {
 		Python::with_gil(|py| self.run_with_gil(py, code));
 	}
 
+	#[cfg(not(doc))]
 	pub(crate) fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, block: PythonBlock<F>) {
 		(block.set_variables)(self.globals().bind(py));
 		if let Err(err) = run_python_code(py, self, block.bytecode) {
