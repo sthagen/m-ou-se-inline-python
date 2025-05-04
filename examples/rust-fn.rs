@@ -1,4 +1,4 @@
-use inline_python::{python, Context};
+use inline_python::{Context, python};
 use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]

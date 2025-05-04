@@ -1,4 +1,4 @@
-use inline_python::{python, Context};
+use inline_python::{Context, python};
 
 fn main() {
 	python! {
