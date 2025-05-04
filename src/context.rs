@@ -15,11 +15,11 @@ use pyo3::{
 /// let c = Context::new();
 ///
 /// c.run(python! {
-///   foo = 5
+///     foo = 5
 /// });
 ///
 /// c.run(python! {
-///   assert foo == 5
+///     assert foo == 5
 /// });
 /// ```
 ///
@@ -33,7 +33,7 @@ use pyo3::{
 /// c.set("x", 13);
 ///
 /// c.run(python! {
-///   foo = x + 2
+///     foo = x + 2
 /// });
 ///
 /// assert_eq!(c.get::<i32>("foo"), 15);
