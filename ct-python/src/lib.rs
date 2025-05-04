@@ -52,57 +52,65 @@ use shared::*;
 /// See [the crate's module level documentation](index.html) for examples.
 #[proc_macro]
 pub fn ct_python(input: TokenStream) -> TokenStream {
-	ct_python_impl(input).unwrap_or_else(|e| e)
+    ct_python_impl(input).unwrap_or_else(|e| e)
 }
 
 fn ct_python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
-	let python = CString::new(python_from_macro(input.clone(), None)?).unwrap();
-	let filename = CString::new(Span::call_site().file()).unwrap();
+    let python = CString::new(python_from_macro(input.clone(), None)?).unwrap();
+    let filename = CString::new(Span::call_site().file()).unwrap();
 
-	Python::with_gil(|py| {
-		let code = compile_python(py, &python, &filename, input.clone())?;
-		let output = run_and_capture(py, code).map_err(|err| python_error_to_compile_error(py, err, input))?;
-		TokenStream::from_str(&output).map_err(|_| compile_error(None, "produced invalid Rust code"))
-	})
+    Python::with_gil(|py| {
+        let code = compile_python(py, &python, &filename, input.clone())?;
+        let output = run_and_capture(py, code)
+            .map_err(|err| python_error_to_compile_error(py, err, input))?;
+        TokenStream::from_str(&output)
+            .map_err(|_| compile_error(None, "produced invalid Rust code"))
+    })
 }
 
 fn run_and_capture(py: Python, code: PyObject) -> PyResult<String> {
-	#[cfg(unix)]
-	let _ = ensure_libpython_symbols_loaded(py);
+    #[cfg(unix)]
+    let _ = ensure_libpython_symbols_loaded(py);
 
-	let globals = py.import("__main__")?.dict().copy()?;
+    let globals = py.import("__main__")?.dict().copy()?;
 
-	let sys = py.import("sys")?;
-	let stdout = py.import("io")?.getattr("StringIO")?.call0()?;
-	let original_stdout = sys.dict().get_item("stdout")?;
-	sys.dict().set_item("stdout", &stdout)?;
+    let sys = py.import("sys")?;
+    let stdout = py.import("io")?.getattr("StringIO")?.call0()?;
+    let original_stdout = sys.dict().get_item("stdout")?;
+    sys.dict().set_item("stdout", &stdout)?;
 
-	let result = unsafe {
-		let ptr = pyo3::ffi::PyEval_EvalCode(code.as_ptr(), globals.as_ptr(), null_mut());
-		PyObject::from_owned_ptr_or_err(py, ptr)
-	};
+    let result = unsafe {
+        let ptr = pyo3::ffi::PyEval_EvalCode(code.as_ptr(), globals.as_ptr(), null_mut());
+        PyObject::from_owned_ptr_or_err(py, ptr)
+    };
 
-	sys.dict().set_item("stdout", original_stdout)?;
+    sys.dict().set_item("stdout", original_stdout)?;
 
-	result?;
+    result?;
 
-	stdout.call_method0("getvalue")?.extract()
+    stdout.call_method0("getvalue")?.extract()
 }
 
 #[cfg(unix)]
 fn ensure_libpython_symbols_loaded(py: Python) -> PyResult<()> {
-	// On Unix, Rustc loads proc-macro crates with RTLD_LOCAL, which (at least
-	// on Linux) means all their dependencies (in our case: libpython) don't
-	// get their symbols made available globally either. This means that
-	// loading modules (e.g. `import math`) will fail, as those modules refer
-	// back to symbols of libpython.
-	//
-	// This function tries to (re)load the right version of libpython, but this
-	// time with RTLD_GLOBAL enabled.
-	let sysconfig = py.import("sysconfig")?;
-	let libdir: String = sysconfig.getattr("get_config_var")?.call1(("LIBDIR",))?.extract()?;
-	let so_name: String = sysconfig.getattr("get_config_var")?.call1(("INSTSONAME",))?.extract()?;
-	let path = CString::new(format!("{libdir}/{so_name}")).unwrap();
-	unsafe { libc::dlopen(path.as_ptr(), libc::RTLD_NOW | libc::RTLD_GLOBAL) };
-	Ok(())
+    // On Unix, Rustc loads proc-macro crates with RTLD_LOCAL, which (at least
+    // on Linux) means all their dependencies (in our case: libpython) don't
+    // get their symbols made available globally either. This means that
+    // loading modules (e.g. `import math`) will fail, as those modules refer
+    // back to symbols of libpython.
+    //
+    // This function tries to (re)load the right version of libpython, but this
+    // time with RTLD_GLOBAL enabled.
+    let sysconfig = py.import("sysconfig")?;
+    let libdir: String = sysconfig
+        .getattr("get_config_var")?
+        .call1(("LIBDIR",))?
+        .extract()?;
+    let so_name: String = sysconfig
+        .getattr("get_config_var")?
+        .call1(("INSTSONAME",))?
+        .extract()?;
+    let path = CString::new(format!("{libdir}/{so_name}")).unwrap();
+    unsafe { libc::dlopen(path.as_ptr(), libc::RTLD_NOW | libc::RTLD_GLOBAL) };
+    Ok(())
 }

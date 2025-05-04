@@ -139,57 +139,57 @@ pub use inline_python_macros::python;
 
 #[doc(hidden)]
 pub trait FromInlinePython<F: FnOnce(&Bound<PyDict>)> {
-	/// The `python!{}` macro expands to a call to this function.
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self;
+    /// The `python!{}` macro expands to a call to this function.
+    fn from_python_macro(bytecode: &'static [u8], set_vars: F, panic: fn(String) -> !) -> Self;
 }
 
 /// Converting a `python!{}` block to `()` will run the Python code.
 ///
 /// This happens when `python!{}` is used as a statement by itself.
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for () {
-	#[track_caller]
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) {
-		let _: Context = FromInlinePython::from_python_macro(bytecode, set_variables, panic);
-	}
+    #[track_caller]
+    fn from_python_macro(bytecode: &'static [u8], set_vars: F, panic: fn(String) -> !) {
+        let _: Context = FromInlinePython::from_python_macro(bytecode, set_vars, panic);
+    }
 }
 
 /// Assigning a `python!{}` block to a `Context` will run the Python code and capture the resulting context.
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for Context {
-	#[track_caller]
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self {
-		Python::with_gil(|py| {
-			let context = Context::new_with_gil(py);
-			context.run_with_gil(
-				py,
-				PythonBlock {
-					bytecode,
-					set_variables,
-					panic,
-				},
-			);
-			context
-		})
-	}
+    #[track_caller]
+    fn from_python_macro(bytecode: &'static [u8], set_vars: F, panic: fn(String) -> !) -> Self {
+        Python::with_gil(|py| {
+            let context = Context::new_with_gil(py);
+            context.run_with_gil(
+                py,
+                PythonBlock {
+                    bytecode,
+                    set_vars,
+                    panic,
+                },
+            );
+            context
+        })
+    }
 }
 
 /// Using a `python!{}` block as a `PythonBlock` object will not do anything yet.
 #[cfg(not(doc))]
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self {
-		Self {
-			bytecode,
-			set_variables,
-			panic,
-		}
-	}
+    fn from_python_macro(bytecode: &'static [u8], set_vars: F, panic: fn(String) -> !) -> Self {
+        Self {
+            bytecode,
+            set_vars,
+            panic,
+        }
+    }
 }
 
 /// Represents a `python!{}` block.
 #[cfg(not(doc))]
 pub struct PythonBlock<F> {
-	bytecode: &'static [u8],
-	set_variables: F,
-	panic: fn(String) -> !,
+    bytecode: &'static [u8],
+    set_vars: F,
+    panic: fn(String) -> !,
 }
 
 /// In the documentation, we just show `PythonBlock` in
