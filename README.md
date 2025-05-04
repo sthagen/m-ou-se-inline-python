@@ -78,7 +78,7 @@ assert_eq!(c.get::<i32>("foo"), 5);
 ### Syntax issues
 
 Since the Rust tokenizer will tokenize the Python code, some valid Python
-code is rejected. The two main things to remember are:
+code is rejected. The main things to remember are:
 
 - Use double quoted strings (`""`) instead of single quoted strings (`''`).
 
@@ -90,24 +90,30 @@ code is rejected. The two main things to remember are:
   (If you use `#` comments, the Rust tokenizer will try to tokenize your
   comment, and complain if your comment doesn't tokenize properly.)
 
+- Write `f ""` instead of `f""`.
+
+  (String literals with prefixes, like `f""`, are reserved in Rust for
+  future use. You can write `f ""` instead, which is automatically
+  converted back to to `f""`.)
+
 Other minor things that don't work are:
+
+- The `//` and `//=` operators are unusable, as they start a comment.
+
+  Workaround: you can write `##` instead, which is automatically converted
+  to `//`.
 
 - Certain escape codes in string literals.
   (Specifically: `\a`, `\b`, `\f`, `\v`, `\N{..}`, `\123` (octal escape
   codes), `\u`, and `\U`.)
 
   These, however, are accepted just fine: `\\`, `\n`, `\t`, `\r`, `\xAB`
-  (hex escape codes), and `\0`
+  (hex escape codes), and `\0`.
 
 - Raw string literals with escaped double quotes. (E.g. `r"...\"..."`.)
 
 - Triple-quoted byte- and raw-strings with content that would not be valid
   as a regular string. And the same for raw-byte and raw-format strings.
   (E.g. `b"""\xFF"""`, `r"""\z"""`, `fr"\z"`, `br"\xFF"`.)
-
-- The `//` and `//=` operators are unusable, as they start a comment.
-
-  Workaround: you can write `##` instead, which is automatically converted
-  to `//`.
 
 Everything else should work fine.
