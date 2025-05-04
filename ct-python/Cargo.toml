@@ -7,5 +7,11 @@ edition = "2024"
 repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "macro", "generate", "compile-time"]
 
+[lib]
+proc-macro = true
+
 [dependencies]
-inline-python-macros = { version = "0.14.1", path = "../macros" }
+pyo3 = { version = "0.24", default-features = false, features = ["auto-initialize"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.71"

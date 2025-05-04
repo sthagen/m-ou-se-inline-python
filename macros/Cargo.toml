@@ -11,6 +11,3 @@ proc-macro = true
 
 [dependencies]
 pyo3 = { version = "0.24", default-features = false, features = ["auto-initialize"] }
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2.71"
