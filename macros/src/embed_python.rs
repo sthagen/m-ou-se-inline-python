@@ -24,7 +24,9 @@ impl EmbedPython {
 		}
 	}
 
-	fn add_whitespace(&mut self, span: Span, line: usize, column: usize) -> Result<(), TokenStream> {
+	fn add_whitespace(&mut self, span: Span) -> Result<(), TokenStream> {
+		let line = span.line();
+		let column = span.column();
 		if line > self.line {
 			while line > self.line {
 				self.python.push('\n');
@@ -52,7 +54,7 @@ impl EmbedPython {
 
 		while let Some(token) = tokens.next() {
 			let span = token.span();
-			self.add_whitespace(span, span.line(), span.column())?;
+			self.add_whitespace(span)?;
 
 			match &token {
 				TokenTree::Group(x) => {
@@ -62,11 +64,11 @@ impl EmbedPython {
 						Delimiter::Bracket => ("[", "]"),
 						Delimiter::None => ("", ""),
 					};
+					self.add_whitespace(x.span_open())?;
 					self.python.push_str(start);
 					self.column += start.len();
 					self.add(x.stream())?;
-					let end_span = token.span().end();
-					self.add_whitespace(span, end_span.line(), end_span.column().saturating_sub(end.len()))?;
+					self.add_whitespace(x.span_close())?;
 					self.python.push_str(end);
 					self.column += end.len();
 				}
