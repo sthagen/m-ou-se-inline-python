@@ -139,6 +139,7 @@ pub use inline_python_macros::python;
 
 #[doc(hidden)]
 pub trait FromInlinePython<F: FnOnce(&Bound<PyDict>)> {
+	/// The `python!{}` macro expands to a call to this function.
 	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self;
 }
 
