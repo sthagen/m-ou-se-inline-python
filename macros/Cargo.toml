@@ -3,7 +3,7 @@ name = "inline-python-macros"
 version = "0.14.1"
 description = "Macros for the inline-python crate"
 license = "BSD-2-Clause"
-edition = "2018"
+edition = "2024"
 repository = "https://github.com/m-ou-se/inline-python"
 
 [lib]
