@@ -1,6 +1,6 @@
 [package]
 name = "ct-python"
-version = "0.5.10"
+version = "0.5.11"
 description = "Execute Python code at compile time to generate Rust code"
 license = "BSD-2-Clause"
 edition = "2024"
