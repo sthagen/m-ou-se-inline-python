@@ -1,6 +1,6 @@
 use crate::error::compile_error_msg;
 use proc_macro::TokenStream;
-use pyo3::{ffi, prelude::*, PyObject, PyResult, Python};
+use pyo3::{PyObject, PyResult, Python, ffi, prelude::*};
 use std::str::FromStr;
 
 #[cfg(unix)]
