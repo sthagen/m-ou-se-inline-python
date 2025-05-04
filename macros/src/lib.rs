@@ -4,7 +4,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{Delimiter, Group, Literal, Span, TokenStream, TokenTree};
+use proc_macro::{Literal, Span, TokenStream, TokenTree};
 use pyo3::{Py, Python};
 use std::{
     collections::BTreeMap,
@@ -28,40 +28,13 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
     let bytecode = compile_to_bytecode(&python, &filename, input)?;
     Ok(TokenStream::from_iter([
         punct(':'), punct(':'), ident("inline_python"),
-        punct(':'), punct(':'), ident("FromInlinePython"),
-        punct(':'), punct(':'), ident("from_python_macro"),
-        parens([
-            TokenTree::Literal(bytecode), punct(','),
-            punct('|'), ident("globals"), punct('|'),
-            braces(variables.into_iter().flat_map(|(key, value)| [
-                punct(':'), punct(':'), ident("inline_python"),
-                punct(':'), punct(':'), ident("pyo3"),
-                punct(':'), punct(':'), ident("prelude"),
-                punct(':'), punct(':'), ident("PyDictMethods"),
-                punct(':'), punct(':'), ident("set_item"),
-                parens([
-                    ident("globals"), punct(','),
-                    string(&key), punct(','),
-                    TokenTree::Ident(value)
-                ]),
-                punct('.'), ident("expect"), parens([string("python")]),
-                punct(';'),
-            ])),
-            punct(','),
-            punct('|'), ident("e"), punct('|'),
-            punct(':'), punct(':'), ident("std"),
-            punct(':'), punct(':'), ident("panic"),
-            punct(':'), punct(':'), ident("panic_any"),
-            parens([ident("e")]),
-        ]),
+        punct(':'), punct(':'), ident("_python_block"),
+        punct('!'),
+        braces(
+            [TokenTree::Literal(bytecode)].into_iter()
+            .chain(variables.into_iter().map(|(_, value)| TokenTree::Ident(value)))
+        ),
     ]))
-}
-
-fn parens(t: impl IntoIterator<Item = TokenTree>) -> TokenTree {
-    TokenTree::Group(Group::new(
-        Delimiter::Parenthesis,
-        TokenStream::from_iter(t),
-    ))
 }
 
 fn compile_to_bytecode(

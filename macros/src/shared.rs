@@ -116,13 +116,13 @@ pub(crate) fn python_from_macro(
                         && x.as_char() == '\''
                         && x.spacing() == Spacing::Joint
                     {
-                        let Some(TokenTree::Ident(name)) = tokens.next() else {
+                        let Some(TokenTree::Ident(ident)) = tokens.next() else {
                             unreachable!()
                         };
-                        let name_str = format!("_RUST_{name}");
-                        python.push_str(&name_str);
-                        loc.column += name_str.chars().count() - 6 + 1;
-                        variables.entry(name_str).or_insert(name);
+                        let name = ident.to_string();
+                        write!(python, "_RUST_{name}").unwrap();
+                        loc.column += name.chars().count() + 1;
+                        variables.entry(name).or_insert(ident);
                     } else if x.as_char() == '#' && x.spacing() == Spacing::Joint {
                         // Convert '##' to '//', because otherwise it's
                         // impossible to use the Python operators '//' and '//='.

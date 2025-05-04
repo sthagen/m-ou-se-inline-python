@@ -143,6 +143,29 @@ pub use pyo3;
 /// See [the crate's module level documentation](index.html) for examples.
 pub use inline_python_macros::python;
 
+// `python!{..}` expands to `python_impl!{b"bytecode" var1 var2 …}`,
+// which then expands to a call to `FromInlinePython::from_python_macro`.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _python_block {
+    ($bytecode:literal $($var:ident)*) => {
+        $crate::FromInlinePython::from_python_macro(
+            // The compiled python bytecode:
+            $bytecode,
+            // The closure that puts all the captured variables in the 'globals' dictionary:
+            |globals| {
+                $(
+                    $crate::pyo3::prelude::PyDictMethods::set_item(
+                        globals, concat!("_RUST_", stringify!($var)), $var
+                    ).expect("python");
+                )*
+            },
+            // The closure that is used to throw panics with the right location:
+            |e| ::std::panic::panic_any(e),
+        )
+    }
+}
+
 #[doc(hidden)]
 pub trait FromInlinePython<F: FnOnce(&Bound<PyDict>)> {
     /// The `python!{}` macro expands to a call to this function.
