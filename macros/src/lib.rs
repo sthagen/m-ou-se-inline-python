@@ -46,7 +46,13 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 				]),
 				punct('.'), ident("expect"), parens([string("python")]),
 				punct(';'),
-			]))
+			])),
+			punct(','),
+			punct('|'), ident("e"), punct('|'),
+			punct(':'), punct(':'), ident("std"),
+			punct(':'), punct(':'), ident("panic"),
+			punct(':'), punct(':'), ident("panic_any"),
+			parens([ident("e")]),
 		]),
 	]))
 }

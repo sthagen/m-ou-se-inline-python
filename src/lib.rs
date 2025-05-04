@@ -139,24 +139,33 @@ pub use inline_python_macros::python;
 
 #[doc(hidden)]
 pub trait FromInlinePython<F: FnOnce(&Bound<PyDict>)> {
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self;
+	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self;
 }
 
 /// Converting a `python!{}` block to `()` will run the Python code.
 ///
 /// This happens when `python!{}` is used as a statement by itself.
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for () {
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F) {
-		let _: Context = FromInlinePython::from_python_macro(bytecode, set_variables);
+	#[track_caller]
+	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) {
+		let _: Context = FromInlinePython::from_python_macro(bytecode, set_variables, panic);
 	}
 }
 
 /// Assigning a `python!{}` block to a `Context` will run the Python code and capture the resulting context.
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for Context {
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self {
+	#[track_caller]
+	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self {
 		Python::with_gil(|py| {
 			let context = Context::new_with_gil(py);
-			context.run_with_gil(py, PythonBlock { bytecode, set_variables });
+			context.run_with_gil(
+				py,
+				PythonBlock {
+					bytecode,
+					set_variables,
+					panic,
+				},
+			);
 			context
 		})
 	}
@@ -164,8 +173,12 @@ impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for Context {
 
 /// Using a `python!{}` block as a `PythonBlock` object will not do anything yet.
 impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
-	fn from_python_macro(bytecode: &'static [u8], set_variables: F) -> Self {
-		Self { bytecode, set_variables }
+	fn from_python_macro(bytecode: &'static [u8], set_variables: F, panic: fn(String) -> !) -> Self {
+		Self {
+			bytecode,
+			set_variables,
+			panic,
+		}
 	}
 }
 
@@ -174,4 +187,5 @@ impl<F: FnOnce(&Bound<PyDict>)> FromInlinePython<F> for PythonBlock<F> {
 pub struct PythonBlock<F> {
 	bytecode: &'static [u8],
 	set_variables: F,
+	panic: fn(String) -> !,
 }

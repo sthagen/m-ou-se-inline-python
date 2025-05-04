@@ -47,17 +47,16 @@ impl Context {
 	///
 	/// This function panics if it fails to create the context.
 	#[allow(clippy::new_without_default)]
+	#[track_caller]
 	pub fn new() -> Self {
 		Python::with_gil(Self::new_with_gil)
 	}
 
+	#[track_caller]
 	pub(crate) fn new_with_gil(py: Python) -> Self {
 		match Self::try_new(py) {
 			Ok(x) => x,
-			Err(error) => {
-				error.print(py);
-				panic!("failed to create Python context");
-			}
+			Err(err) => panic!("{}", panic_string(py, &err)),
 		}
 	}
 
@@ -80,10 +79,7 @@ impl Context {
 			Err(_) | Ok(None) => panic!("Python context does not contain a variable named `{}`", name),
 			Ok(Some(value)) => match FromPyObject::extract_bound(&value) {
 				Ok(value) => value,
-				Err(e) => {
-					e.print(py);
-					panic!("Unable to convert `{}` to `{}`", name, std::any::type_name::<T>());
-				}
+				Err(e) => panic!("Unable to convert `{}` to `{}`: {e}", name, std::any::type_name::<T>()),
 			},
 		})
 	}
@@ -92,11 +88,9 @@ impl Context {
 	///
 	/// This function panics if the conversion fails.
 	pub fn set<T: for<'p> IntoPyObject<'p>>(&self, name: &str, value: T) {
-		Python::with_gil(|py| match self.globals().bind(py).set_item(name, value) {
-			Ok(()) => (),
-			Err(e) => {
-				e.print(py);
-				panic!("Unable to set `{}` from a `{}`", name, std::any::type_name::<T>());
+		Python::with_gil(|py| {
+			if let Err(e) = self.globals().bind(py).set_item(name, value) {
+				panic!("Unable to set `{}` from a `{}`: {e}", name, std::any::type_name::<T>());
 			}
 		})
 	}
@@ -127,10 +121,9 @@ impl Context {
 	pub fn add_wrapped(&self, wrapper: &impl Fn(Python) -> PyResult<Bound<'_, PyCFunction>>) {
 		Python::with_gil(|py| {
 			let obj = wrapper(py).unwrap();
-			let name = obj.getattr("__name__").expect("Missing __name__");
-			if let Err(e) = self.globals().bind(py).set_item(name, obj) {
-				e.print(py);
-				panic!("Unable to add wrapped function");
+			let name = obj.getattr("__name__").expect("wrapped item should have a __name__");
+			if let Err(err) = self.globals().bind(py).set_item(name, obj) {
+				panic!("{}", panic_string(py, &err));
 			}
 		})
 	}
@@ -153,14 +146,28 @@ impl Context {
 		Python::with_gil(|py| self.run_with_gil(py, code));
 	}
 
-	pub(crate) fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, code: PythonBlock<F>) {
-		(code.set_variables)(self.globals().bind(py));
-		match run_python_code(py, self, code.bytecode) {
-			Ok(_) => (),
-			Err(e) => {
-				e.print(py);
-				panic!("{}", "python!{...} failed to execute");
-			}
+	pub(crate) fn run_with_gil<F: FnOnce(&Bound<PyDict>)>(&self, py: Python<'_>, block: PythonBlock<F>) {
+		(block.set_variables)(self.globals().bind(py));
+		if let Err(err) = run_python_code(py, self, block.bytecode) {
+			(block.panic)(panic_string(py, &err));
 		}
 	}
+}
+
+fn panic_string(py: Python, err: &PyErr) -> String {
+	match py_err_to_string(py, &err) {
+		Ok(msg) => msg,
+		Err(_) => err.to_string(),
+	}
+}
+
+/// Print the error while capturing stderr into a String.
+fn py_err_to_string(py: Python, err: &PyErr) -> Result<String, PyErr> {
+	let sys = py.import("sys")?;
+	let stderr = py.import("io")?.getattr("StringIO")?.call0()?;
+	let original_stderr = sys.dict().get_item("stderr")?;
+	sys.dict().set_item("stderr", &stderr)?;
+	err.print(py);
+	sys.dict().set_item("stderr", original_stderr)?;
+	stderr.call_method0("getvalue")?.extract()
 }
