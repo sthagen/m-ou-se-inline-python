@@ -68,7 +68,7 @@ impl Context {
 	}
 
 	/// Get the globals as dictionary.
-	pub fn globals<'p>(&self) -> &Py<PyDict> {
+	pub fn globals(&self) -> &Py<PyDict> {
 		&self.globals
 	}
 
