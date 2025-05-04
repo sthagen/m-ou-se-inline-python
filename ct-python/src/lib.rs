@@ -24,11 +24,11 @@
 //! Use the `ct_python!{..}` macro to generate Rust code from an embedded
 //! Python script.
 //! The output of the script (`print()` and anything else through `sys.stdout`)
-//! is captured, and will be parsed as Rust code.
+//! is captured, and will be parsed and injected as Rust code.
 //!
 //! ## Python Errors
 //!
-//! Any syntax errors or runtime exceptions from the Python code will be
+//! Any syntax errors and runtime exceptions from the Python code will be
 //! reported by the Rust compiler as compiler errors.
 //!
 //! ## Syntax issues
