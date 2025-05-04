@@ -1,6 +1,5 @@
-use proc_macro::Span;
-use proc_macro2::{Delimiter, Ident, Spacing, TokenStream, TokenTree};
-use quote::quote_spanned;
+use super::compile_error;
+use proc_macro::{Delimiter, Ident, Spacing, Span, TokenStream, TokenTree};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
@@ -34,7 +33,7 @@ impl EmbedPython {
 			}
 			let first_indent = *self.first_indent.get_or_insert(column);
 			let indent = column.checked_sub(first_indent);
-			let indent = indent.ok_or_else(|| quote_spanned!(span.into() => compile_error!{"Invalid indentation"}))?;
+			let indent = indent.ok_or_else(|| compile_error(Some((span, span)), "invalid indent"))?;
 			for _ in 0..indent {
 				self.python.push(' ');
 			}
@@ -53,7 +52,7 @@ impl EmbedPython {
 		let mut tokens = input.into_iter();
 
 		while let Some(token) = tokens.next() {
-			let span = token.span().unwrap();
+			let span = token.span();
 			self.add_whitespace(span, span.line(), span.column())?;
 
 			match &token {
@@ -67,7 +66,7 @@ impl EmbedPython {
 					self.python.push_str(start);
 					self.column += start.len();
 					self.add(x.stream())?;
-					let end_span = token.span().unwrap().end();
+					let end_span = token.span().end();
 					self.add_whitespace(span, end_span.line(), end_span.column().saturating_sub(end.len()))?;
 					self.python.push_str(end);
 					self.column += end.len();
@@ -107,7 +106,7 @@ impl EmbedPython {
 				}
 				TokenTree::Ident(x) => {
 					write!(&mut self.python, "{}", x).unwrap();
-					let end_span = token.span().unwrap().end();
+					let end_span = token.span().end();
 					self.line = end_span.line();
 					self.column = end_span.column();
 				}
@@ -122,7 +121,7 @@ impl EmbedPython {
 						self.python.pop();
 					}
 					self.python += &s;
-					let end_span = token.span().unwrap().end();
+					let end_span = token.span().end();
 					self.line = end_span.line();
 					self.column = end_span.column();
 				}
