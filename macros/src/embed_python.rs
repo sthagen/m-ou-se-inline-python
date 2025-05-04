@@ -78,7 +78,7 @@ impl EmbedPython {
 						} else {
 							unreachable!()
 						};
-						let name_str = format!("_RUST_{}", name);
+						let name_str = format!("_RUST_{name}");
 						self.python.push_str(&name_str);
 						self.column += name_str.chars().count() - 6 + 1;
 						self.variables.entry(name_str).or_insert(name);
@@ -105,7 +105,7 @@ impl EmbedPython {
 					}
 				}
 				TokenTree::Ident(x) => {
-					write!(&mut self.python, "{}", x).unwrap();
+					write!(&mut self.python, "{x}").unwrap();
 					let end_span = token.span().end();
 					self.line = end_span.line();
 					self.column = end_span.column();

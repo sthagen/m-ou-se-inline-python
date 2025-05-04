@@ -17,7 +17,7 @@ fn ensure_libpython_symbols_loaded(py: Python) -> PyResult<()> {
 	let sysconfig = py.import("sysconfig")?;
 	let libdir: String = sysconfig.getattr("get_config_var")?.call1(("LIBDIR",))?.extract()?;
 	let so_name: String = sysconfig.getattr("get_config_var")?.call1(("INSTSONAME",))?.extract()?;
-	let path = std::ffi::CString::new(format!("{}/{}", libdir, so_name)).unwrap();
+	let path = std::ffi::CString::new(format!("{libdir}/{so_name}")).unwrap();
 	unsafe {
 		libc::dlopen(path.as_ptr(), libc::RTLD_NOW | libc::RTLD_GLOBAL);
 	}
