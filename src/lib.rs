@@ -111,7 +111,7 @@
 //!
 //! Everything else should work fine.
 
-use pyo3::{types::PyDict, Bound, Python};
+use pyo3::{Bound, Python, types::PyDict};
 
 mod context;
 mod run;
