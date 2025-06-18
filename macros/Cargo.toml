@@ -5,6 +5,7 @@ description = "Macros for the inline-python crate"
 license = "BSD-2-Clause"
 edition = "2024"
 repository = "https://github.com/m-ou-se/inline-python"
+rust-version = "1.88.0"
 
 [lib]
 proc-macro = true

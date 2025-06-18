@@ -1,7 +1,5 @@
 //! Helper crate for `inline-python`.
 
-#![feature(proc_macro_span)]
-
 extern crate proc_macro;
 
 use proc_macro::{Literal, Span, TokenStream, TokenTree};

@@ -6,6 +6,7 @@ license = "BSD-2-Clause"
 edition = "2024"
 repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "macro", "generate", "compile-time"]
+rust-version = "1.88.0"
 
 [lib]
 proc-macro = true
