@@ -11,7 +11,7 @@ rust-version = "1.88.0"
 
 [dependencies]
 inline-python-macros = { version = "0.16.0", path = "./macros" }
-pyo3 = { version = "0.24", default-features = false, features = ["auto-initialize"] }
+pyo3 = { version = "0.25", default-features = false, features = ["auto-initialize"] }
 
 [workspace]
 members = ["examples", "ct-python"]
