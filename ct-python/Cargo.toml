@@ -1,17 +1,18 @@
 [package]
 name = "ct-python"
-version = "0.5.11"
+version = "0.5.12"
 description = "Execute Python code at compile time to generate Rust code"
 license = "BSD-2-Clause"
 edition = "2024"
 repository = "https://github.com/m-ou-se/inline-python"
 keywords = ["python", "macro", "generate", "compile-time"]
+rust-version = "1.88.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-pyo3 = { version = "0.24", default-features = false, features = ["auto-initialize"] }
+pyo3 = { version = "0.25", default-features = false, features = ["auto-initialize"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.71"

@@ -38,8 +38,6 @@
 //!
 //! [1]: https://docs.rs/inline-python/#syntax-issues
 
-#![feature(proc_macro_span)]
-
 use proc_macro::{Span, TokenStream};
 use pyo3::{PyObject, PyResult, Python, prelude::*};
 use std::{ffi::CString, ptr::null_mut, str::FromStr};
